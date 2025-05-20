@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   DeleteIcon,
   EditIcon,
+  RepeatIcon,
 } from '@chakra-ui/icons';
 import {
   Alert,
@@ -44,6 +45,7 @@ import { useCalendarView } from './hooks/useCalendarView.ts';
 import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
+import { useRepeatEventOperations } from './hooks/useRepeatEventOperations.ts';
 import { useSearch } from './hooks/useSearch.ts';
 import { Event, EventForm, RepeatType } from './types';
 import {
@@ -55,6 +57,7 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
+import { generateRecurringEvents } from './utils/generateRecurringEvents';
 import { getTimeErrorMessage } from './utils/timeValidation';
 
 const categories = ['업무', '개인', '가족', '기타'];
@@ -103,8 +106,14 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
+  const { events, fetchEvents, saveEvent, deleteEvent } = useEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null)
+  );
+  const { saveRepeatEvents } = useRepeatEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null),
+    fetchEvents
   );
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
@@ -138,6 +147,13 @@ function App() {
       return;
     }
 
+    const isEdit = Boolean(editingEvent);
+
+    const repeatId =
+      isRepeating && repeatType !== 'none'
+        ? editingEvent?.repeat.id || crypto.randomUUID()
+        : undefined;
+
     const eventData: Event | EventForm = {
       id: editingEvent ? editingEvent.id : undefined,
       title,
@@ -148,6 +164,7 @@ function App() {
       location,
       category,
       repeat: {
+        id: repeatId,
         type: isRepeating ? repeatType : 'none',
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
@@ -155,13 +172,97 @@ function App() {
       notificationTime,
     };
 
-    const overlapping = findOverlappingEvents(eventData, events);
-    if (overlapping.length > 0) {
-      setOverlappingEvents(overlapping);
-      setIsOverlapDialogOpen(true);
+    if (!isEdit && eventData.repeat.type !== 'none') {
+      // 신규 반복 이벤트 생성
+      const repeatedEvents = generateRecurringEvents(eventData);
+      const overlapping = repeatedEvents.flatMap((e) => findOverlappingEvents(e, events));
+
+      if (overlapping.length > 0) {
+        setOverlappingEvents(overlapping);
+        setIsOverlapDialogOpen(true);
+      } else {
+        await saveRepeatEvents(eventData);
+        resetForm();
+      }
     } else {
-      await saveEvent(eventData);
-      resetForm();
+      const event: Event | EventForm = {
+        id: editingEvent ? editingEvent.id : undefined,
+        title,
+        date,
+        startTime,
+        endTime,
+        description,
+        location,
+        category,
+        repeat: {
+          type: isRepeating ? repeatType : 'none',
+          interval: repeatInterval,
+          endDate: repeatEndDate || undefined,
+        },
+        notificationTime,
+      };
+
+      const overlapping = findOverlappingEvents(event, events);
+      if (overlapping.length > 0) {
+        setOverlappingEvents(overlapping);
+        setIsOverlapDialogOpen(true);
+      } else {
+        await saveEvent(event);
+        resetForm();
+      }
+    }
+  };
+
+  const handleConfirmOverlap = async () => {
+    setIsOverlapDialogOpen(false);
+
+    const repeatId =
+      isRepeating && repeatType !== 'none'
+        ? editingEvent?.repeat.id || crypto.randomUUID()
+        : undefined;
+
+    const eventData: Event | EventForm = {
+      id: editingEvent ? editingEvent.id : undefined,
+      title,
+      date,
+      startTime,
+      endTime,
+      description,
+      location,
+      category,
+      repeat: {
+        id: repeatId,
+        type: isRepeating ? repeatType : 'none',
+        interval: repeatInterval,
+        endDate: repeatEndDate || undefined,
+      },
+      notificationTime,
+    };
+
+    if (eventData.repeat.type !== 'none') {
+      // 신규 반복 이벤트 생성
+      // const repeatedEvents = generateRecurringEvents(eventData);
+
+      await saveRepeatEvents(eventData);
+    } else {
+      const event: Event | EventForm = {
+        id: editingEvent ? editingEvent.id : undefined,
+        title,
+        date,
+        startTime,
+        endTime,
+        description,
+        location,
+        category,
+        repeat: {
+          type: isRepeating ? repeatType : 'none',
+          interval: repeatInterval,
+          endDate: repeatEndDate || undefined,
+        },
+        notificationTime,
+      };
+
+      await saveEvent(event);
     }
   };
 
@@ -201,6 +302,7 @@ function App() {
                         >
                           <HStack spacing={1}>
                             {isNotified && <BellIcon />}
+                            {event.repeat.type !== 'none' && <RepeatIcon />}
                             <Text fontSize="sm" noOfLines={1}>
                               {event.title}
                             </Text>
@@ -270,6 +372,7 @@ function App() {
                               >
                                 <HStack spacing={1}>
                                   {isNotified && <BellIcon />}
+                                  {event.repeat.type !== 'none' && <RepeatIcon />}
                                   <Text fontSize="sm" noOfLines={1}>
                                     {event.title}
                                   </Text>
@@ -542,29 +645,7 @@ function App() {
               <Button ref={cancelRef} onClick={() => setIsOverlapDialogOpen(false)}>
                 취소
               </Button>
-              <Button
-                colorScheme="red"
-                onClick={() => {
-                  setIsOverlapDialogOpen(false);
-                  saveEvent({
-                    id: editingEvent ? editingEvent.id : undefined,
-                    title,
-                    date,
-                    startTime,
-                    endTime,
-                    description,
-                    location,
-                    category,
-                    repeat: {
-                      type: isRepeating ? repeatType : 'none',
-                      interval: repeatInterval,
-                      endDate: repeatEndDate || undefined,
-                    },
-                    notificationTime,
-                  });
-                }}
-                ml={3}
-              >
+              <Button colorScheme="red" onClick={handleConfirmOverlap} ml={3}>
                 계속 진행
               </Button>
             </AlertDialogFooter>

@@ -1,4 +1,4 @@
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useState, useEffect } from 'react';
 
 import { Event, RepeatType } from '../types';
 import { getTimeErrorMessage } from '../utils/timeValidation';
@@ -37,6 +37,12 @@ export const useEventForm = (initialEvent?: Event) => {
     setEndTime(newEndTime);
     setTimeError(getTimeErrorMessage(startTime, newEndTime));
   };
+
+  useEffect(() => {
+    if (isRepeating && repeatType === 'none') {
+      setRepeatType('daily');
+    }
+  }, [isRepeating, repeatType]);
 
   const resetForm = () => {
     setTitle('');
