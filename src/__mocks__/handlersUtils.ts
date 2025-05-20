@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 
-import { server } from '../setupTests';
-import { Event } from '../types';
+import { server } from '@/setupTests';
+import { Event } from '@/types';
 
 // ! Hard 여기 제공 안함
 export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
