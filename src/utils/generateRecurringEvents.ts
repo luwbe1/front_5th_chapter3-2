@@ -32,7 +32,7 @@ export function generateRecurringEvents(event: EventForm | Event): EventForm[] {
 
   let current = new Date(start);
   const originalDay = current.getDate();
-  const forceEndOfMonth = isEndOfMonth(start);
+  const forceEndOfMonth = isEndOfMonth(current);
 
   while (current <= end) {
     results.push({
@@ -48,15 +48,21 @@ export function generateRecurringEvents(event: EventForm | Event): EventForm[] {
         current.setDate(current.getDate() + 7 * interval);
         break;
       case 'monthly': {
-        const next = new Date(current);
-        next.setMonth(next.getMonth() + interval);
-        current = adjustDateForMonthEnd(next, originalDay, forceEndOfMonth);
+        const year = current.getFullYear();
+        const month = current.getMonth() + interval;
+        const target = new Date(year, month, 1);
+        const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+        const adjustedDay = forceEndOfMonth ? lastDay : Math.min(originalDay, lastDay);
+        current = new Date(target.getFullYear(), target.getMonth(), adjustedDay);
         break;
       }
       case 'yearly': {
-        const next = new Date(current);
-        next.setFullYear(next.getFullYear() + interval);
-        current = adjustDateForMonthEnd(next, originalDay, forceEndOfMonth);
+        const year = current.getFullYear() + interval;
+        const month = current.getMonth();
+        const target = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const adjustedDay = forceEndOfMonth ? lastDay : Math.min(originalDay, lastDay);
+        current = new Date(year, month, adjustedDay);
         break;
       }
     }
