@@ -214,6 +214,74 @@ describe('일정 뷰', () => {
     const single = await screen.findByText('단일 회의');
     expect(within(single.closest('div')!).queryByTestId('repeat-icon')).toBeNull();
   });
+
+  it('반복 일정의 단일 수정 시 반복이 해제되어 단일 일정으로 변경되고 아이콘이 사라진다.', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    // 4주 반복 일정 생성
+    await saveSchedule(user, {
+      title: '반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '주간 정기 회의',
+      location: 'B룸',
+      category: '업무',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-22' },
+    });
+
+    // 10월 15일 일정 클릭하여 수정
+    const eventToEdit = screen.getByText('2025-10-15');
+    await user.click(eventToEdit);
+    await user.click(screen.getByRole('button', { name: /수정/i }));
+
+    // 제목 수정 및 저장
+    const titleInput = screen.getByLabelText('제목');
+    await user.clear(titleInput);
+    await user.type(titleInput, '단일 수정된 회의');
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    const eventList = within(screen.getByTestId('event-list'));
+
+    // 기존 반복 일정 이름이 아닌 새로운 이름으로 존재하고,
+    // 반복 아이콘이 없는지 확인
+    expect(eventList.getByText('단일 수정된 회의')).toBeInTheDocument();
+    expect(eventList.queryByTestId('repeat-icon')).not.toBeInTheDocument(); // 예: 반복 아이콘
+  });
+
+  it('반복 일정의 특정 일정을 삭제하면 다른 반복 일정은 유지된다.', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(user, {
+      title: '삭제 테스트 회의',
+      date: '2025-11-01',
+      startTime: '13:00',
+      endTime: '14:00',
+      description: '삭제 확인용 반복 일정',
+      location: 'C룸',
+      category: '업무',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-11-22' },
+    });
+
+    // 11월 8일 일정 삭제
+    const eventToDelete = screen.getByText('2025-11-08');
+    await user.click(eventToDelete);
+    await user.click(screen.getByRole('button', { name: /삭제/i }));
+
+    // 삭제 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.queryByText('2025-11-08')).not.toBeInTheDocument();
+
+    // 나머지 반복 일정은 남아 있어야 함
+    expect(eventList.getByText('2025-11-01')).toBeInTheDocument();
+    expect(eventList.getByText('2025-11-15')).toBeInTheDocument();
+    expect(eventList.getByText('2025-11-22')).toBeInTheDocument();
+  });
 });
 
 describe('검색 기능', () => {
