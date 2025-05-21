@@ -173,6 +173,47 @@ describe('일정 뷰', () => {
     const januaryFirstCell = within(monthView).getByText('1').closest('td')!;
     expect(within(januaryFirstCell).getByText('신정')).toBeInTheDocument();
   });
+
+  // 반복 뱃지 테스트
+  it('반복 일정에는 반복 뱃지가 표시된다', async () => {
+    setupMockHandlerCreation([
+      {
+        id: '1',
+        title: '반복 회의',
+        date: '2025-06-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '',
+        location: '',
+        category: '업무',
+        notificationTime: 10,
+        repeat: { type: 'monthly', interval: 1, endDate: '2025-09-01' },
+      },
+      {
+        id: '2',
+        title: '단일 회의',
+        date: '2025-06-01',
+        startTime: '11:00',
+        endTime: '12:00',
+        description: '',
+        location: '',
+        category: '개인',
+        notificationTime: 5,
+        repeat: { type: 'none', interval: 0 },
+      },
+    ]);
+
+    setup(<App />);
+
+    // 반복 회의에 아이콘이 있어야 함
+    const repeated = await screen.findByText('반복 회의');
+    const icon = within(repeated.closest('div')!).getByTestId('repeat-icon');
+    expect(icon).toBeInTheDocument();
+
+    // 단일 회의에는 아이콘이 없어야 함
+    const single = await screen.findByText('단일 회의');
+    expect(within(single.closest('div')!).queryByTestId('repeat-icon')).toBeNull();
+  });
 });
 
 describe('검색 기능', () => {

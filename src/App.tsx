@@ -372,7 +372,9 @@ function App() {
                               >
                                 <HStack spacing={1}>
                                   {isNotified && <BellIcon />}
-                                  {event.repeat.type !== 'none' && <RepeatIcon />}
+                                  {event.repeat.type !== 'none' && (
+                                    <RepeatIcon data-testId="repeat-icon" />
+                                  )}
                                   <Text fontSize="sm" noOfLines={1}>
                                     {event.title}
                                   </Text>
