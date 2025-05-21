@@ -109,7 +109,7 @@ it('존재하는 이벤트 삭제 시 에러없이 아이템이 삭제된다.', 
   expect(result.current.events).toEqual([
     {
       id: '2',
-      title: '삭제할 이벤트2',
+      title: '스터디2',
       date: '2025-10-15',
       startTime: '09:00',
       endTime: '10:00',
@@ -121,7 +121,7 @@ it('존재하는 이벤트 삭제 시 에러없이 아이템이 삭제된다.', 
     },
     {
       id: '3',
-      title: '삭제할 이벤트3',
+      title: '스터디3',
       date: '2025-10-22',
       startTime: '09:00',
       endTime: '10:00',
