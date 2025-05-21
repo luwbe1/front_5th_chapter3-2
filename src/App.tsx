@@ -147,12 +147,7 @@ function App() {
       return;
     }
 
-    const isEdit = Boolean(editingEvent);
-
-    const repeatId =
-      isRepeating && repeatType !== 'none'
-        ? editingEvent?.repeat.id || crypto.randomUUID()
-        : undefined;
+    const isSingleEdit = editingEvent && !isRepeating;
 
     const eventData: Event | EventForm = {
       id: editingEvent ? editingEvent.id : undefined,
@@ -163,64 +158,44 @@ function App() {
       description,
       location,
       category,
-      repeat: {
-        id: repeatId,
-        type: isRepeating ? repeatType : 'none',
-        interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
-      },
+      repeat: isSingleEdit
+        ? { type: 'none', interval: 0 }
+        : {
+            type: isRepeating ? repeatType : 'none',
+            interval: repeatInterval,
+            endDate: repeatEndDate || undefined,
+            id: editingEvent?.repeat?.id, // 유지
+          },
       notificationTime,
     };
 
-    if (!isEdit && eventData.repeat.type !== 'none') {
-      // 신규 반복 이벤트 생성
-      const repeatedEvents = generateRecurringEvents(eventData);
-      const overlapping = repeatedEvents.flatMap((e) => findOverlappingEvents(e, events));
+    if (editingEvent && !isRepeating) {
+      eventData.repeat = { type: 'none', interval: 0 };
+    }
 
-      if (overlapping.length > 0) {
-        setOverlappingEvents(overlapping);
-        setIsOverlapDialogOpen(true);
-      } else {
-        await saveRepeatEvents(eventData);
-        resetForm();
-      }
+    const overlapping = (
+      eventData.repeat.type !== 'none' ? generateRecurringEvents(eventData) : [eventData]
+    ) // 단일 일정일 경우에도 배열로 감싸서 검사
+      .flatMap((e) => findOverlappingEvents(e, events));
+
+    if (overlapping.length > 0) {
+      setOverlappingEvents(overlapping);
+      setIsOverlapDialogOpen(true);
     } else {
-      const event: Event | EventForm = {
-        id: editingEvent ? editingEvent.id : undefined,
-        title,
-        date,
-        startTime,
-        endTime,
-        description,
-        location,
-        category,
-        repeat: {
-          type: isRepeating ? repeatType : 'none',
-          interval: repeatInterval,
-          endDate: repeatEndDate || undefined,
-        },
-        notificationTime,
-      };
-
-      const overlapping = findOverlappingEvents(event, events);
-      if (overlapping.length > 0) {
-        setOverlappingEvents(overlapping);
-        setIsOverlapDialogOpen(true);
+      if (editingEvent && isRepeating) {
+        await saveRepeatEvents(eventData);
+      } else if (!editingEvent && isRepeating && eventData.repeat.type !== 'none') {
+        await saveRepeatEvents(eventData);
       } else {
-        await saveEvent(event);
-        resetForm();
+        await saveEvent(eventData);
       }
+      resetForm();
     }
   };
 
   const handleConfirmOverlap = async () => {
     setIsOverlapDialogOpen(false);
 
-    const repeatId =
-      isRepeating && repeatType !== 'none'
-        ? editingEvent?.repeat.id || crypto.randomUUID()
-        : undefined;
-
     const eventData: Event | EventForm = {
       id: editingEvent ? editingEvent.id : undefined,
       title,
@@ -231,7 +206,6 @@ function App() {
       location,
       category,
       repeat: {
-        id: repeatId,
         type: isRepeating ? repeatType : 'none',
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
@@ -239,30 +213,12 @@ function App() {
       notificationTime,
     };
 
-    if (eventData.repeat.type !== 'none') {
-      // 신규 반복 이벤트 생성
-      // const repeatedEvents = generateRecurringEvents(eventData);
-
+    if (editingEvent && isRepeating) {
+      await saveRepeatEvents(eventData);
+    } else if (!editingEvent && isRepeating && eventData.repeat.type !== 'none') {
       await saveRepeatEvents(eventData);
     } else {
-      const event: Event | EventForm = {
-        id: editingEvent ? editingEvent.id : undefined,
-        title,
-        date,
-        startTime,
-        endTime,
-        description,
-        location,
-        category,
-        repeat: {
-          type: isRepeating ? repeatType : 'none',
-          interval: repeatInterval,
-          endDate: repeatEndDate || undefined,
-        },
-        notificationTime,
-      };
-
-      await saveEvent(event);
+      await saveEvent(eventData);
     }
   };
 
@@ -299,10 +255,13 @@ function App() {
                           borderRadius="md"
                           fontWeight={isNotified ? 'bold' : 'normal'}
                           color={isNotified ? 'red.500' : 'inherit'}
+                          data-testid="event-item"
                         >
                           <HStack spacing={1}>
                             {isNotified && <BellIcon />}
-                            {event.repeat.type !== 'none' && <RepeatIcon />}
+                            {event.repeat.type !== 'none' && (
+                              <RepeatIcon data-testid="repeat-icon" />
+                            )}
                             <Text fontSize="sm" noOfLines={1}>
                               {event.title}
                             </Text>
@@ -369,11 +328,12 @@ function App() {
                                 borderRadius="md"
                                 fontWeight={isNotified ? 'bold' : 'normal'}
                                 color={isNotified ? 'red.500' : 'inherit'}
+                                data-testid="event-item"
                               >
                                 <HStack spacing={1}>
                                   {isNotified && <BellIcon />}
                                   {event.repeat.type !== 'none' && (
-                                    <RepeatIcon data-testId="repeat-icon" />
+                                    <RepeatIcon data-testid="repeat-icon" />
                                   )}
                                   <Text fontSize="sm" noOfLines={1}>
                                     {event.title}
@@ -462,7 +422,14 @@ function App() {
 
           <FormControl>
             <FormLabel>반복 설정</FormLabel>
-            <Checkbox isChecked={isRepeating} onChange={(e) => setIsRepeating(e.target.checked)}>
+            <Checkbox
+              isChecked={isRepeating}
+              onChange={(e) => {
+                setIsRepeating(e.target.checked);
+                setRepeatType(e.target.checked ? 'daily' : 'none');
+                setRepeatInterval(e.target.checked ? 1 : 0);
+              }}
+            >
               반복 일정
             </Checkbox>
           </FormControl>
@@ -606,11 +573,13 @@ function App() {
                   <HStack>
                     <IconButton
                       aria-label="Edit event"
+                      data-testid={`edit-event-${event.title}-${event.date}`}
                       icon={<EditIcon />}
                       onClick={() => editEvent(event)}
                     />
                     <IconButton
                       aria-label="Delete event"
+                      data-testid="delete-event"
                       icon={<DeleteIcon />}
                       onClick={() => deleteEvent(event.id)}
                     />

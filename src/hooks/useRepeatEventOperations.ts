@@ -24,18 +24,6 @@ export const useRepeatEventOperations = (
 
       const repeatedEvents = generateRecurringEvents(baseWithRepeatId);
 
-      if (editing && 'id' in baseEvent && baseEvent.id) {
-        // 현재 일정은 반복 해제 처리
-        await fetch(`/api/events/${baseEvent.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...baseEvent,
-            repeat: { type: 'none', interval: 0 },
-          }),
-        });
-      }
-
       // 반복 일정 일괄 생성
       await fetch('/api/events-list', {
         method: 'POST',

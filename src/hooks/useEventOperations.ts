@@ -28,6 +28,7 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
 
   const saveEvent = async (eventData: Event | EventForm) => {
     try {
+      if (eventData.repeat.type !== 'none') eventData.repeat = { type: 'none', interval: 0 };
       let response;
       if (editing) {
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
