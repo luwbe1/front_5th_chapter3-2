@@ -106,7 +106,32 @@ it('존재하는 이벤트 삭제 시 에러없이 아이템이 삭제된다.', 
 
   await act(() => Promise.resolve(null));
 
-  expect(result.current.events).toEqual([]);
+  expect(result.current.events).toEqual([
+    {
+      id: '2',
+      title: '삭제할 이벤트2',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제할 이벤트입니다',
+      location: '어딘가',
+      category: '기타',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-23' },
+      notificationTime: 10,
+    },
+    {
+      id: '3',
+      title: '삭제할 이벤트3',
+      date: '2025-10-22',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제할 이벤트입니다',
+      location: '어딘가',
+      category: '기타',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-23' },
+      notificationTime: 10,
+    },
+  ]);
 });
 
 it("이벤트 로딩 실패 시 '이벤트 로딩 실패'라는 텍스트와 함께 에러 토스트가 표시되어야 한다", async () => {
@@ -183,4 +208,60 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
   });
 
   expect(result.current.events).toHaveLength(1);
+});
+
+// 반복일정 단일 수정
+it('반복일정을 수정하면 단일 일정으로 변경되어야 한다', async () => {
+  setupMockHandlerUpdating(); // 기존 반복일정 포함된 상태
+
+  const { result } = renderHook(() => useEventOperations(true));
+
+  const updatedEvent: Event = {
+    id: '3',
+    title: '수정된 회의',
+    date: '2025-10-15',
+    startTime: '12:00',
+    endTime: '13:00',
+    description: '수정됨',
+    location: '회의실 D',
+    category: '개인',
+    repeat: { type: 'none', interval: 0 }, // 반복 제거
+    notificationTime: 0,
+  };
+
+  await act(async () => {
+    await result.current.saveEvent(updatedEvent);
+  });
+
+  expect(updatedEvent.repeat.type).toBe('none');
+});
+
+// 반복일정 단일 삭제
+it('반복일정을 삭제하면 해당 일정만 삭제된다', async () => {
+  setupMockHandlerDeletion();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  // 삭제 전: 3개 있어야 함
+  await act(() => Promise.resolve(null));
+  expect(result.current.events).toHaveLength(3);
+
+  await act(async () => {
+    await result.current.deleteEvent('2');
+  });
+  // 결과 확인
+  const remainingIds = result.current.events.map((e) => e.id);
+  expect(remainingIds).toEqual(['1', '3']);
+
+  // 반복 정보는 여전히 존재
+  const stillRepeated = result.current.events.find((e) => e.id === '3');
+  expect(stillRepeated?.repeat.type).toBe('weekly');
+
+  // 토스트도 확인
+  expect(toastFn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: '일정이 삭제되었습니다.',
+      status: 'info',
+    })
+  );
 });
