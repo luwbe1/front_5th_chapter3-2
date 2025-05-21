@@ -126,3 +126,42 @@ describe('generateRecurringEvents > 반복 간격 테스트', () => {
     ]);
   });
 });
+
+describe('generateRecurringEvents - 반복 종료 조건 테스트', () => {
+  it('종료일이 주어지면 그 날짜까지 반복된다', () => {
+    const events = generateRecurringEvents(
+      baseEvent({
+        date: '2025-06-01',
+        repeat: {
+          type: 'daily',
+          interval: 1,
+          endDate: '2025-06-05',
+        },
+      })
+    );
+
+    expect(events.map((e) => e.date)).toEqual([
+      '2025-06-01',
+      '2025-06-02',
+      '2025-06-03',
+      '2025-06-04',
+      '2025-06-05',
+    ]);
+  });
+
+  it('종료일이 생략되면 기본값(2025-09-30)까지 반복된다', () => {
+    const events = generateRecurringEvents(
+      baseEvent({
+        date: '2025-09-28',
+        repeat: {
+          type: 'daily',
+          interval: 1,
+          endDate: undefined, // 종료일 없음
+        },
+      })
+    );
+
+    // 기본 종료일이 2025-09-30이므로 28, 29, 30만 나와야 함
+    expect(events.map((e) => e.date)).toEqual(['2025-09-28', '2025-09-29', '2025-09-30']);
+  });
+});
