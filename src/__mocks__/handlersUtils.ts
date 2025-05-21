@@ -13,6 +13,7 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
     }),
     http.post('/api/events', async ({ request }) => {
       const newEvent = (await request.json()) as Event;
+      console.log(newEvent);
       newEvent.id = String(mockEvents.length + 1); // 간단한 ID 생성
       mockEvents.push(newEvent);
       return HttpResponse.json(newEvent, { status: 201 });
@@ -20,8 +21,9 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
     http.post('/api/events-list', async ({ request }) => {
       const { events: newEvents } = (await request.json()) as { events: Event[] };
       console.log(newEvents);
-      newEvents.forEach((_, index) => {
-        newEvents[index].id = String(mockEvents.length + 1 + index);
+      newEvents.forEach((e, i) => {
+        e.id = String(mockEvents.length + 1 + i);
+        mockEvents.push(e);
       });
       return HttpResponse.json(newEvents, { status: 201 });
     })
@@ -89,7 +91,7 @@ export const setupMockHandlerUpdating = () => {
       const updatedEvent = (await request.json()) as Event;
       const index = mockEvents.findIndex((event) => event.id === id);
 
-      mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+      mockEvents[index] = { ...mockEvents[index], ...updatedEvent, repeat: updatedEvent.repeat };
       return HttpResponse.json(mockEvents[index]);
     })
   );
@@ -99,7 +101,7 @@ export const setupMockHandlerDeletion = () => {
   const mockEvents: Event[] = [
     {
       id: '1',
-      title: '삭제할 이벤트',
+      title: '스터디1',
       date: '2025-10-15',
       startTime: '09:00',
       endTime: '10:00',
@@ -111,7 +113,7 @@ export const setupMockHandlerDeletion = () => {
     },
     {
       id: '2',
-      title: '삭제할 이벤트2',
+      title: '스터디2',
       date: '2025-10-15',
       startTime: '09:00',
       endTime: '10:00',
@@ -123,7 +125,7 @@ export const setupMockHandlerDeletion = () => {
     },
     {
       id: '3',
-      title: '삭제할 이벤트3',
+      title: '스터디3',
       date: '2025-10-22',
       startTime: '09:00',
       endTime: '10:00',
@@ -142,6 +144,10 @@ export const setupMockHandlerDeletion = () => {
     http.delete('/api/events/:id', ({ params }) => {
       const { id } = params;
       const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index === -1) {
+        return new HttpResponse(null, { status: 404 });
+      }
 
       mockEvents.splice(index, 1);
       return new HttpResponse(null, { status: 204 });
