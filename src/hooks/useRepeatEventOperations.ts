@@ -3,6 +3,16 @@ import { useToast } from '@chakra-ui/react';
 import { EventForm, Event } from '../types';
 import { generateRecurringEvents } from '../utils/generateRecurringEvents';
 
+/**
+ * 반복 일정 저장 로직을 처리
+ *
+ * @param {boolean} editing - 현재 편집 모드 여부. true일 경우 수정, false일 경우 생성
+ * @param {() => void} [onSave] - 저장 완료 후 실행할 콜백 함수
+ * @param {() => Promise<void>} [fetchEvents] - 저장 후 일정 목록을 새로고침하는 함수
+ * @returns {{
+ *   saveRepeatEvents: (baseEvent: Event | EventForm) => Promise<void>
+ * }} 반복 일정을 생성 및 저장하는 함수 객체를 반환
+ */
 export const useRepeatEventOperations = (
   editing: boolean,
   onSave?: () => void,
@@ -10,6 +20,12 @@ export const useRepeatEventOperations = (
 ) => {
   const toast = useToast();
 
+  /**
+   * 반복 일정을 생성하고 서버에 저장하는 함수
+   * 반복 ID가 없으면 새로 생성하고, 반복 정보를 포함한 이벤트들을 일괄 생성
+   *
+   * @param {EventForm | Event} baseEvent - 반복 정보를 포함한 기준 이벤트 객체
+   */
   const saveRepeatEvents = async (baseEvent: EventForm | Event) => {
     try {
       const { repeat } = baseEvent;

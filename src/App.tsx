@@ -127,6 +127,9 @@ function App() {
 
   const toast = useToast();
 
+  /**
+   * 일정 추가 또는 수정 처리 함수
+   */
   const addOrUpdateEvent = async () => {
     if (!title || !date || !startTime || !endTime) {
       toast({
@@ -173,6 +176,7 @@ function App() {
 
     const isSingleEdit = editingEvent && !isRepeating;
 
+    // 이벤트 데이터 구성 (수정 or 신규 여부 및 반복 여부에 따라 다르게 설정)
     const eventData: Event | EventForm = {
       id: editingEvent ? editingEvent.id : undefined,
       title,
@@ -193,10 +197,12 @@ function App() {
       notificationTime,
     };
 
+    // 단일 일정 수정인 경우 반복 정보 제거 (명시적 처리)
     if (editingEvent && !isRepeating) {
       eventData.repeat = { type: 'none', interval: 0 };
     }
 
+    // 중복 일정 확인
     const overlapping = (
       eventData.repeat.type !== 'none' ? generateRecurringEvents(eventData) : [eventData]
     ) // 단일 일정일 경우에도 배열로 감싸서 검사
@@ -217,6 +223,9 @@ function App() {
     }
   };
 
+  /**
+   * 중복 확인 후 사용자 확정 시 실행되는 함수
+   */
   const handleConfirmOverlap = async () => {
     setIsOverlapDialogOpen(false);
 
@@ -282,7 +291,7 @@ function App() {
                           data-testid="event-item"
                         >
                           <HStack spacing={1}>
-                            {isNotified && <BellIcon />}
+                            {isNotified && <BellIcon data-testid="bell-icon" />}
                             {event.repeat.type !== 'none' && (
                               <RepeatIcon data-testid="repeat-icon" />
                             )}
@@ -355,7 +364,7 @@ function App() {
                                 data-testid="event-item"
                               >
                                 <HStack spacing={1}>
-                                  {isNotified && <BellIcon />}
+                                  {isNotified && <BellIcon data-testid="bell-icon" />}
                                   {event.repeat.type !== 'none' && (
                                     <RepeatIcon data-testid="repeat-icon" />
                                   )}

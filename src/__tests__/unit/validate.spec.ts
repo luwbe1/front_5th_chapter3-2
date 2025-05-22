@@ -1,9 +1,8 @@
 import { Event } from '../../types';
 import { isNumberInRange, validateRepeatEndDate } from '../../utils/validate';
 
-/**
- * 심화과제 팀 활동
- */
+// 심화과제 팀 활동
+// validate
 describe('isNumberInRange', () => {
   it('정상 범위 내 숫자는 true를 반환한다', () => {
     expect(isNumberInRange({ value: 5, min: 1, max: 10 })).toBe(true);
