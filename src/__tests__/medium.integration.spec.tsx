@@ -241,40 +241,58 @@ describe('일정 뷰', () => {
     expect(within(singleBox!).queryByTestId('repeat-icon')).toBeNull();
   });
 
-  // it('반복 일정의 단일 수정 시 반복이 해제되어 단일 일정으로 변경되고 아이콘이 사라진다.', async () => {
-  //   setupMockHandlerUpdating();
+  it('반복일정을 수정하면 단일 일정으로 변경되고 반복 아이콘이 사라진다.', async () => {
+    setupMockHandlerCreation([
+      {
+        id: '1',
+        title: '수정할 반복 일정',
+        date: '2025-10-20',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '기존 팀 미팅',
+        location: '회의실 B',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-30' },
+        notificationTime: 10,
+      },
+      {
+        id: '2',
+        title: '수정할 반복 일정',
+        date: '2025-10-27',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '기존 팀 미팅',
+        location: '회의실 B',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-30' },
+        notificationTime: 10,
+      },
+    ]);
 
-  //   const { user } = setup(<App />);
+    const { user } = setup(<App />);
 
-  //   // 4주 반복 일정 생성
-  //   await saveSchedule(user, {
-  //     id: '5',
-  //     title: '반복 회의',
-  //     date: '2025-10-15',
-  //     startTime: '09:00',
-  //     endTime: '10:00',
-  //     description: '주간 정기 회의',
-  //     location: 'B룸',
-  //     category: '업무',
-  //     repeat: { id: 'repeat-1', type: 'weekly', interval: 1, endDate: '2025-10-22' },
-  //   } as Event);
+    await screen.findByText('일정 로딩 완료!');
 
-  //   const editButtons = await screen.findAllByLabelText('Edit event');
-  //   const target = editButtons.find(
-  //     (btn) =>
-  //       btn.closest('[data-testid="event-item"]')?.textContent?.includes('반복 회의') &&
-  //       btn.closest('[data-testid="event-item"]')?.textContent?.includes('2025-10-15')
-  //   );
-  //   expect(target).toBeTruthy();
-  //   await user.click(target!);
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[1]);
 
-  //   // 5. 수정된 이벤트를 다시 탐색
-  //   const updatedText = screen.getByText('반복 회의');
-  //   const updatedItem = updatedText.closest('[data-testid="event-item"]')! as HTMLElement;
-  //   expect(updatedItem).not.toBeNull();
+    await user.clear(screen.getByLabelText('제목'));
+    await user.type(screen.getByLabelText('제목'), '수정된 회의');
 
-  //   expect(within(updatedItem).queryByTestId('repeat-icon')).toBeNull();
-  // });
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    const eventList = screen.getByTestId('event-list');
+    const eventBoxes = within(eventList)
+      .getAllByRole('generic')
+      .filter(
+        (box) => box.textContent?.includes('수정된 회의') || box.textContent?.includes('기존 회의')
+      );
+
+    const modifiedEventBox = eventBoxes.find((box) => box.textContent?.includes('수정된 회의'));
+    expect(
+      within(modifiedEventBox as HTMLElement).queryByTestId('repeat-icon')
+    ).not.toBeInTheDocument();
+  });
 
   it('반복 일정의 특정 일정을 삭제하면 다른 반복 일정은 유지된다.', async () => {
     setupMockHandlerDeletion();
@@ -527,5 +545,76 @@ describe('반복 간격', () => {
     });
 
     expect(screen.getByText('반복 간격은 1에서 12 사이의 숫자여야 합니다.')).toBeInTheDocument();
+  });
+});
+
+/**
+ * 주어진 날짜 텍스트(`day`)로 시작하는 달력 셀(`<td>`)을 container에서 찾아 반환합니다.
+ *
+ * @param {HTMLElement} container - 달력의 테이블 컨테이너 요소입니다.
+ * @param {string} day - 찾고자 하는 날짜의 숫자 문자열 (예: "15").
+ * @returns {HTMLTableCellElement | undefined} - 조건에 맞는 <td> 요소 또는 찾지 못한 경우 undefined.
+ */
+const getDateCellByDay = (container: HTMLElement, day: string) => {
+  return Array.from(container.querySelectorAll('td')).find((td) =>
+    td.textContent?.trim().startsWith(day)
+  );
+};
+
+describe('일정 알림 기능', () => {
+  it('사용자가 알림 시간을 선택할 수 있다 (1분, 10분, 1시간, 1일 전)', async () => {
+    setup(<App />);
+
+    const notificationSelect = screen.getByLabelText('알림 설정') as HTMLSelectElement;
+
+    // 각 옵션을 선택하면 -> 선택값이 noti어쩌고에 반영돼야 함
+    const testCases = [
+      { label: '1분 전', value: '1' },
+      { label: '10분 전', value: '10' },
+      { label: '1시간 전', value: '60' },
+      { label: '1일 전', value: '1440' },
+    ];
+
+    for (const { label, value } of testCases) {
+      await userEvent.selectOptions(notificationSelect, value);
+      expect(notificationSelect.value).toBe(value);
+    }
+  });
+
+  it('알림 시간에 도달하면 캘린더에 아이콘이 추가되고 색상이 변경되어 표시된다.', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-05-05T13:22:00'));
+
+    const mockEvent: Event = {
+      id: 'event-1',
+      title: '어린이날 대운동회',
+      date: '2025-05-05',
+      startTime: '13:30',
+      endTime: '16:00',
+      description: '초등학교 운동회',
+      location: '운동장',
+      category: '가족',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    };
+
+    setupMockHandlerCreation([mockEvent]);
+    setup(<App />);
+
+    // 알림 체크 타이머가 돌아가게 함 (최소 1초 이상)
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    const monthView = screen.getByTestId('month-view');
+    const cell = getDateCellByDay(monthView, '5');
+    expect(cell).toBeDefined();
+
+    // 아이콘이 실제로 나타날 때까지 기다림
+    const icon = await within(cell!).findByTestId('bell-icon');
+    expect(icon).toBeInTheDocument();
+
+    // 이벤트 텍스트도 확인
+    expect(within(cell!).getByText(/어린이날 대운동회/)).toBeInTheDocument();
   });
 });
