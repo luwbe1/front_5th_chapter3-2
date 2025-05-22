@@ -59,6 +59,7 @@ import {
 import { findOverlappingEvents } from './utils/eventOverlap';
 import { generateRecurringEvents } from './utils/generateRecurringEvents';
 import { getTimeErrorMessage } from './utils/timeValidation';
+import { isNumberInRange, validateRepeatEndDate } from './utils/validate';
 
 const categories = ['업무', '개인', '가족', '기타'];
 
@@ -140,6 +141,29 @@ function App() {
     if (startTimeError || endTimeError) {
       toast({
         title: '시간 설정을 확인해주세요.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (isRepeating && repeatEndDate === 'endDate') {
+      const endDateError = validateRepeatEndDate({ date, repeat: { endDate: repeatEndDate } });
+      if (endDateError) {
+        toast({
+          title: endDateError,
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+    }
+
+    if (!isNumberInRange({ value: repeatInterval, min: 1, max: 12 }) && isRepeating) {
+      toast({
+        title: '반복 간격은 1에서 12 사이의 숫자여야 합니다.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -466,9 +490,11 @@ function App() {
                 <FormControl>
                   <FormLabel>반복 간격</FormLabel>
                   <Input
+                    aria-label="repeat-interval"
                     type="number"
                     value={repeatInterval}
                     onChange={(e) => setRepeatInterval(Number(e.target.value))}
+                    max={12}
                     min={1}
                   />
                 </FormControl>
