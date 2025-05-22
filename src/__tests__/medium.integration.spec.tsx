@@ -457,3 +457,75 @@ it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트
 
   expect(screen.getByText('10분 후 기존 회의 일정이 시작됩니다.')).toBeInTheDocument();
 });
+
+// medium.integration.spec.tsx
+// 심화과제 팀 활동
+describe('반복 간격', () => {
+  it('반복 간격을 설정하지 않으면 기본값으로 1이 설정되어야 한다.', () => {
+    setup(<App />);
+
+    const repeatInterval = screen.getByLabelText('repeat-interval');
+    expect(repeatInterval).toHaveValue(1);
+  });
+
+  it('반복 간격이 1 미만이라면, 경고 메시지가 표시되어야 한다. (복사 붙여넣기 동작)', async () => {
+    const { user } = setup(<App />);
+    const repeatInterval = screen.getByLabelText('repeat-interval');
+
+    await user.clear(repeatInterval);
+    await user.type(repeatInterval, '0');
+    await saveSchedule(user, {
+      title: '새 회의',
+      date: '2025-10-15',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '프로젝트 진행 상황 논의',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 0, endDate: '2025-10-20' },
+    });
+
+    expect(screen.getByText('반복 간격은 1에서 12 사이의 숫자여야 합니다.')).toBeInTheDocument();
+  });
+
+  it('반복 간격이 12 초과라면 경고 메시지가 표시되어야 한다. (복사 붙여넣기 동작)', async () => {
+    const { user } = setup(<App />);
+    const repeatInterval = screen.getByLabelText('repeat-interval');
+
+    await user.clear(repeatInterval);
+    await user.type(repeatInterval, '13');
+    await saveSchedule(user, {
+      title: '새 회의',
+      date: '2025-10-15',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '프로젝트 진행 상황 논의',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 13, endDate: '2025-10-20' },
+    });
+
+    expect(screen.getByText('반복 간격은 1에서 12 사이의 숫자여야 합니다.')).toBeInTheDocument();
+  });
+
+  it('반복 간격이 유효한 숫자가 아니라면 경고 메시지가 표시되어야 한다.', async () => {
+    const { user } = setup(<App />);
+    const repeatInterval = screen.getByLabelText('repeat-interval');
+
+    await user.clear(repeatInterval);
+    await user.type(repeatInterval, '0');
+    await user.type(repeatInterval, '222');
+    await saveSchedule(user, {
+      title: '새 회의',
+      date: '2025-10-15',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '프로젝트 진행 상황 논의',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 222, endDate: '2025-10-20' },
+    });
+
+    expect(screen.getByText('반복 간격은 1에서 12 사이의 숫자여야 합니다.')).toBeInTheDocument();
+  });
+});
