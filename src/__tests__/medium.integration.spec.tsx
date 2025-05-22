@@ -575,7 +575,7 @@ describe('일정 알림 기능', () => {
       { label: '1일 전', value: '1440' },
     ];
 
-    for (const { label, value } of testCases) {
+    for (const { value } of testCases) {
       await userEvent.selectOptions(notificationSelect, value);
       expect(notificationSelect.value).toBe(value);
     }
